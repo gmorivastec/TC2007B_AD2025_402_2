@@ -13,8 +13,11 @@ import {
   onAuthStateChanged,
   UserCredential,
   sendPasswordResetEmail, 
-  getAuth
+  getAuth,
+  getReactNativePersistance,
 } from 'firebase/auth';
+
+import { ReactNativeAsyncStorage } from '@react-native-async-storage/async-storage';
 
 // imports para firestore (database)
 import { 
@@ -43,7 +46,9 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 
 // inicializa autenticación
-const auth = getAuth(app);
+// const auth = getAuth(app);
+
+const auth = initializeAuth(app, { persistence: getReactNativePersistance(ReactNativeStorage)});
 
 // inicializa base de datos
 const db = getFirestore(app);
@@ -54,6 +59,35 @@ export default function App() {
   const[password, setPassword] = useState("");
   const[nombre, setNombre] = useState("");
   const[raza, setRaza] = useState("");
+
+  useEffect(() => {
+
+    // escuchar cambio de estatus en usuario
+    onAuthStateChanged(
+      auth, 
+      user => {
+        if(user) {
+          alert("USUARIO VALIDADO:  " + user.email);
+        } else {
+          alert("USUARIO HIZO SIGN OUT");
+        }
+      }
+    );
+
+    // escuchar si hubo un cambio en los datos de una collection
+    onSnapshot(
+      collection(db, "perritos"), 
+      querySnapshot => {
+        console.log("******************************** SNAPSHOT UPDATE");
+        querySnapshot.forEach(
+          documentoActual => {
+            console.log(documentoActual.data());
+          }
+        );
+      }
+    );
+
+  }, []);
   
   return (
     <View style={styles.container}>
@@ -105,7 +139,13 @@ export default function App() {
       />
       <Button 
         title='mail de reset'
-        onPress={() => {}}
+        onPress={() => {
+
+          sendPasswordResetEmail(auth, email)
+          .then(() => {
+            alert("CORREO HA SIDO ENVIADO!");
+          });
+        }}
       />
       <Button 
         title='agregar perrito'
